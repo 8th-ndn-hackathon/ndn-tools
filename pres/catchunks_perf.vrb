@@ -1,19 +1,26 @@
-\frametitle{Small Improvements \& Future Work}
+\frametitle{Small Improvements \& Open Problems}
 
 \begin{enumerate}
-\item Increase retx limit from 3 to \textbf{15!}
+\item Increase retry limit from 3 to \textbf{15!}
 
 \pause
 \item Look into \textbf{small buffer size} issue!
 \begin{itemize}
-\item Timeouts: $>$ 1000 vs 80 in TCP
+\item Timeouts: $>$ 1000 in NDN vs 80 in TCP
 \item Increasing k \& CUBIC doesn't help
 \end{itemize}
 
-\pause
-\item RTO Backoff mechanism doesn't work.
+%\pause
+%\item RTO Backoff mechanism doesn't work.
+%\begin{itemize}
+%\item
+%\end{itemize}
+
 
 \pause
 \item Tune congestion marks (UDP + Unix sockets)
+
+\pause
+\item Test with Mini-NDN WiFi
 \end{enumerate}
 

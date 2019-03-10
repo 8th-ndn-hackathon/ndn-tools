@@ -32,10 +32,10 @@
 \item Window decrease $>$ retransmissions? 
 
 \pause
-\item Exceeds maximum retries
+\item Catchunks exceeds maximum retries
 
 \pause
-\item Too many/too little cong. marks? (Unix, UDP).
+\item Too many/too little cong. marks? (Unix, UDP)
 \end{enumerate}
 
 \end{frame}
@@ -50,7 +50,7 @@
 \begin{itemize}
 \item VMs: Virtualbox + mini-ndn
 \item Traffic shaping (tc netem) at router!
-\item Catchunks vs. Iperf3
+\item Catchunks vs. Iperf3 (TCP)
 \end{itemize}
 
 \pause
@@ -242,10 +242,10 @@ What's special about 200ms? $\Rightarrow$ \textbf{minRTO=200ms!}
 
 
 
-\begin{frame}[fragile]{Hackathon Improvements: Better statistics}
+\begin{frame}[fragile]{Hackathon Improvements: Better Statistics (1)}
 
-\textbf{Many spurious retransmissions!}
-\vspace*{-.5em}
+\textbf{Measure spurious retransmissions!}
+%\vspace*{-.5em}
 
 \footnotesize
 \begin{verbatim}
@@ -254,8 +254,12 @@ Time elapsed: 78861.7 milliseconds
 Total # of segments received: 11916
 Total size: 52428.8kB
 Goodput: 5.318554 Mbit/s
+\end{verbatim}
+\begin{verbatim}
 RTO Timeouts: 245 (caused 22 window decreases)
 Retx segments: 49, skipped: 196
+\end{verbatim}
+\begin{verbatim}
 Packet loss rate: 0.409528%
 Total # of received congestion marks: 1
 RTT min/avg/max = 201.598/207.656/261.004 ms
@@ -280,7 +284,7 @@ Explains why sometimes \textbf{window decrease $>$ retx!}
 \end{frame}
 
 
-\begin{frame}[fragile]{Hackathon Improvements: Increase Timeouts }
+\begin{frame}[fragile]{Hackathon Improvements: Increase RTO (2)}
 
 \includegraphics[width=\linewidth]{images/rtt_rto200ms.pdf}
 
@@ -289,7 +293,7 @@ $RTO = sRTT + k * varRTT$
 \end{frame}
 
 
-\begin{frame}[fragile]{Hackathon Improvements: Increase Timeouts }
+\begin{frame}[fragile]{Hackathon Improvements: Increase RTO (2)}
 
 \includegraphics[width=\linewidth]{images/rtt_rto300ms.pdf}
 
@@ -298,19 +302,21 @@ Increase minRTO to 300ms
 \end{frame}
 
 
-\begin{frame}[fragile]{Hackathon Improvements: Increase Timeouts }
+\begin{frame}[fragile]{Hackathon Improvements: Increase RTO (2)}
 
 \includegraphics[width=\linewidth]{images/rtt_k8.pdf}
 
-Increase k to 8. 
+Increase \textbf{k=8.} 
 TP:  5.6 Mbps $\Rightarrow$ \textbf{28.6 Mbps} (TCP: 34Mbps)
 
 \end{frame}
 
 
 
-\begin{frame}[fragile]{Hackathon Improvements: Implement TCP CUBIC }
+\begin{frame}[fragile]{Hackathon Improvements: Impl. TCP CUBIC (3)}
 Delay=400ms, 100MB file
+
+\vspace*{1em}
 
 \begin{tabular}{lccc}
 \toprule
@@ -328,25 +334,52 @@ TCP 		  &  16.1 & - & -\\
 \end{frame}
 
 
-\begin{frame}[fragile]{Small Improvements \& Future Work}
+\begin{frame}[fragile]{Small Improvements \& Open Problems}
 
 \begin{enumerate}
-\item Increase retx limit from 3 to \textbf{15!}
+\item Increase retry limit from 3 to \textbf{15!}
 
 \pause
 \item Look into \textbf{small buffer size} issue! 
 \begin{itemize}
-\item Timeouts: $>$ 1000 vs 80 in TCP
+\item Timeouts: $>$ 1000 in NDN vs 80 in TCP
 \item Increasing k \& CUBIC doesn't help
 \end{itemize}
 
-\pause
-\item RTO Backoff mechanism doesn't work.
+%\pause
+%\item RTO Backoff mechanism doesn't work.
+%\begin{itemize}
+%\item 
+%\end{itemize}
+
 
 \pause
 \item Tune congestion marks (UDP + Unix sockets)
+
+\pause
+\item Test with Mini-NDN WiFi
 \end{enumerate}
 
+\end{frame}
+
+
+%% Last slide
+\begin{frame}
+	\frametitle{The End}
+	\vspace{2cm}
+	{\huge Any Questions?
+%		Thank you for
+%		your attention!\\
+%		\vspace*{2em}
+	}
+	\vspace{2.5cm}  
+	\begin{flushright}  
+		Klaus Schneider, Saurab Dulal \\ 
+%		\footnotesize{
+%			\url{klaus@cs.arizona.edu} \\
+%			\url{https://www.cs.arizona.edu/~klaus/} %\\ 
+%		}
+	\end{flushright}
 \end{frame}
 
 
