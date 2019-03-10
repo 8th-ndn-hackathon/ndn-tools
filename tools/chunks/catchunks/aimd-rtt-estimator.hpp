@@ -58,7 +58,7 @@ public:
       : isVerbose(false)
       , alpha(0.125)
       , beta(0.25)
-      , k(4)
+      , k(6)
       , initialRto(1000.0)
       , minRto(200.0)
       , maxRto(20000.0)

@@ -51,6 +51,12 @@ RttEstimator::addMeasurement(uint64_t segNo, Milliseconds rtt, size_t nExpectedS
 {
   BOOST_ASSERT(nExpectedSamples > 0);
 
+  // From RFC 6298:
+  //  SRTT <- R
+  //  RTTVAR <- R/2
+  //  RTO <- SRTT + max (G, K*RTTVAR)
+  // G = clock granularity in seconds.
+
   if (m_nRttSamples == 0) { // first measurement
     m_sRtt = rtt;
     m_rttVar = m_sRtt / 2;
@@ -59,8 +65,14 @@ RttEstimator::addMeasurement(uint64_t segNo, Milliseconds rtt, size_t nExpectedS
   else {
     double alpha = m_options.alpha / nExpectedSamples;
     double beta = m_options.beta / nExpectedSamples;
+
+    // From RFC 6298:
+    // RTTVAR <- (1 - beta) * RTTVAR + beta * |SRTT - R'|
+    // SRTT <- (1 - alpha) * SRTT + alpha * R'
+
     m_rttVar = (1 - beta) * m_rttVar + beta * time::abs(m_sRtt - rtt);
     m_sRtt = (1 - alpha) * m_sRtt + alpha * rtt;
+
     m_rto = m_sRtt + m_options.k * m_rttVar;
   }
 
@@ -76,8 +88,11 @@ RttEstimator::addMeasurement(uint64_t segNo, Milliseconds rtt, size_t nExpectedS
 void
 RttEstimator::backoffRto()
 {
+//  std::cout << "Backoff rto: " << m_rto.count();
   m_rto = ndn::clamp(m_rto * m_options.rtoBackoffMultiplier,
                      m_options.minRto, m_options.maxRto);
+
+//  std::cout << " -> " << m_rto.count() << "\n";
 }
 
 std::ostream&

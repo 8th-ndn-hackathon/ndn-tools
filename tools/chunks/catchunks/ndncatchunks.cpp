@@ -58,10 +58,10 @@ main(int argc, char** argv)
 
   // congestion control parameters, CWA refers to conservative window adaptation,
   // i.e. only reduce window size at most once per RTT
-  bool disableCwa(false), resetCwndToInit(false), ignoreCongMarks(false);
+  bool disableCwa(false), resetCwndToInit(false), ignoreCongMarks(false), useCubic(false);
   double aiStep(1.0), mdCoef(0.5), alpha(0.125), beta(0.25),
          minRto(200.0), maxRto(4000.0);
-  int initCwnd(1), initSsthresh(std::numeric_limits<int>::max()), k(4);
+  int initCwnd(1), initSsthresh(std::numeric_limits<int>::max()), k(6);
   std::string cwndPath, rttPath;
 
   namespace po = boost::program_options;
@@ -103,9 +103,12 @@ main(int argc, char** argv)
                          "disable Conservative Window Adaptation, "
                          "i.e. reduce window on each congestion event (timeout or congestion mark) "
                          "instead of at most once per RTT")
-    ("aimd-ignore-cong-marks",  po::bool_switch(&ignoreCongMarks),
-                                "disable reaction to congestion marks, "
+    ("use-cubic",  po::bool_switch(&useCubic),
+                                "use Cubic Congestion Control, "
                                 "the default is to decrease the window after receiving a congestion mark")
+    ("ignore-cong-marks",  po::bool_switch(&ignoreCongMarks),
+                                "disable reaction to congestion marks, "
+                                "")
     ("aimd-reset-cwnd-to-init", po::bool_switch(&resetCwndToInit),
                                 "reset cwnd to initial cwnd when loss event occurs, default is "
                                 "resetting to ssthresh")
@@ -253,6 +256,7 @@ main(int argc, char** argv)
       optionsPipeline.aiStep = aiStep;
       optionsPipeline.mdCoef = mdCoef;
       optionsPipeline.ignoreCongMarks = ignoreCongMarks;
+      optionsPipeline.useCubic = useCubic;
 
       auto aimdPipeline = make_unique<PipelineInterestsAimd>(face, *rttEstimator, optionsPipeline);
 

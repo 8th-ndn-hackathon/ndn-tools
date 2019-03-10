@@ -35,6 +35,7 @@ namespace ndn {
 namespace chunks {
 namespace aimd {
 
+constexpr double PipelineInterestsAimd::CUBIC_C;
 constexpr double PipelineInterestsAimd::MIN_SSTHRESH;
 
 PipelineInterestsAimd::PipelineInterestsAimd(Face& face, RttEstimator& rttEstimator,
@@ -57,6 +58,13 @@ PipelineInterestsAimd::PipelineInterestsAimd(Face& face, RttEstimator& rttEstima
   , m_ssthresh(m_options.initSsthresh)
   , m_hasFailure(false)
   , m_failedSegNo(0)
+  , m_cubicBeta(0.8)
+  , m_cubicWmax(0)
+  , m_cubicLastWmax(0)
+  , m_cubicLastDecrease(time::steady_clock::now())
+  , m_useCubicFastConv(false)
+
+
 {
   if (m_options.isVerbose) {
     std::cerr << m_options;
@@ -399,14 +407,22 @@ PipelineInterestsAimd::handleFail(uint64_t segNo, const std::string& reason)
   }
 }
 
+
+
+
 void
 PipelineInterestsAimd::increaseWindow()
 {
-  if (m_cwnd < m_ssthresh) {
-    m_cwnd += m_options.aiStep; // additive increase
+  if (m_options.useCubic) {
+    CubicIncrease();
   }
   else {
-    m_cwnd += m_options.aiStep / std::floor(m_cwnd); // congestion avoidance
+    if (m_cwnd < m_ssthresh) {
+      m_cwnd += m_options.aiStep; // additive increase
+    }
+    else {
+      m_cwnd += m_options.aiStep / std::floor(m_cwnd); // congestion avoidance
+    }
   }
 
   afterCwndChange(time::steady_clock::now() - getStartTime(), m_cwnd);
@@ -415,14 +431,87 @@ PipelineInterestsAimd::increaseWindow()
 void
 PipelineInterestsAimd::decreaseWindow()
 {
-  // please refer to RFC 5681, Section 3.1 for the rationale behind it
-  m_ssthresh = std::max(MIN_SSTHRESH, m_cwnd * m_options.mdCoef); // multiplicative decrease
-  m_cwnd = m_options.resetCwndToInit ? m_options.initCwnd : m_ssthresh;
+  std::cerr << "Window decrease from " << m_cwnd << "\n";
 
-  std::cerr << "Window decrease to " << m_cwnd << "\n";
+  if (m_options.useCubic) {
+    CubicDecrease();
+  }
+  else {
+    // please refer to RFC 5681, Section 3.1 for the rationale behind it
+    m_ssthresh = std::max(MIN_SSTHRESH, m_cwnd * m_options.mdCoef); // multiplicative decrease
+    m_cwnd = m_options.resetCwndToInit ? m_options.initCwnd : m_ssthresh;
+  }
 
   afterCwndChange(time::steady_clock::now() - getStartTime(), m_cwnd);
 }
+
+
+void
+PipelineInterestsAimd::CubicIncrease()
+{
+  // 1. Time since last congestion event in Seconds
+  const double t = time::duration_cast<time::microseconds>(
+                     time::steady_clock::now() - m_cubicLastDecrease).count() / 1e6;
+
+  // 2. Time it takes to increase the window to cubic_wmax
+  // K = cubic_root(W_max*(1-beta_cubic)/C) (Eq. 2)
+  const double k = std::cbrt(m_cubicWmax * (1 - m_cubicBeta) / CUBIC_C);
+
+  // 3. Target: W_cubic(t) = C*(t-K)^3 + W_max (Eq. 1)
+  const double w_cubic = CUBIC_C * std::pow(t - k, 3) + m_cubicWmax;
+
+  // 4. Estimate of Reno Increase (Currently Disabled)
+  //  const double rtt = m_rtt->GetCurrentEstimate().GetSeconds();
+  //  const double w_est = m_cubic_wmax*m_beta + (3*(1-m_beta)/(1+m_beta)) * (t/rtt);
+  constexpr double w_est = 0.0;
+
+  // Actual adaptation
+  if (m_cwnd < m_ssthresh) {
+    m_cwnd += 1.0;
+  }
+  else {
+    BOOST_ASSERT(m_cubicWmax > 0);
+
+    double cubic_increment = std::max(w_cubic, w_est) - m_cwnd;
+    // Cubic increment must be positive:
+    // Note: This change is not part of the RFC, but I added it to improve performance.
+    if (cubic_increment < 0) {
+      cubic_increment = 0.0;
+    }
+    m_cwnd += cubic_increment / m_cwnd;
+  }
+}
+
+
+void
+PipelineInterestsAimd::CubicDecrease()
+{
+  // This implementation is ported from https://datatracker.ietf.org/doc/rfc8312/
+
+  const double FAST_CONV_DIFF = 1.0; // In percent
+
+  // A flow remembers the last value of W_max,
+  // before it updates W_max for the current congestion event.
+
+  // Current w_max < last_wmax
+  if (m_useCubicFastConv && m_cwnd < m_cubicLastWmax * (1 - FAST_CONV_DIFF / 100)) {
+    m_cubicLastWmax = m_cwnd;
+    m_cubicWmax = m_cwnd * (1.0 + m_cubicBeta) / 2.0;
+  }
+  else {
+    // Save old cwnd as w_max:
+    m_cubicLastWmax = m_cwnd;
+    m_cubicWmax = m_cwnd;
+  }
+
+  m_ssthresh = m_cwnd * m_cubicBeta;
+  m_ssthresh = std::max<double>(m_ssthresh, m_options.initCwnd);
+  m_cwnd = m_ssthresh;
+
+  m_cubicLastDecrease = time::steady_clock::now();
+}
+
+
 
 void
 PipelineInterestsAimd::cancelInFlightSegmentsGreaterThan(uint64_t segNo)

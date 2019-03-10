@@ -57,6 +57,7 @@ public:
   bool disableCwa = false; ///< disable Conservative Window Adaptation
   bool resetCwndToInit = false; ///< reduce cwnd to initCwnd when loss event occurs
   bool ignoreCongMarks = false; ///< disable window decrease after congestion marks
+  bool useCubic = false; ///< use TCP Cubic
 };
 
 /**
@@ -181,6 +182,13 @@ private:
   decreaseWindow();
 
   void
+  CubicIncrease();
+
+  void
+  CubicDecrease();
+
+
+  void
   cancelInFlightSegmentsGreaterThan(uint64_t segNo);
 
 PUBLIC_WITH_TESTS_ELSE_PRIVATE:
@@ -209,6 +217,17 @@ PUBLIC_WITH_TESTS_ELSE_PRIVATE:
 
   double m_cwnd; ///< current congestion window size (in segments)
   double m_ssthresh; ///< current slow start threshold
+
+
+  // TCP CUBIC Parameters //
+  static constexpr double CUBIC_C = 0.4;
+  bool m_useCubicFastConv;
+
+  double m_cubicBeta;
+  double m_cubicWmax;
+  double m_cubicLastWmax;
+  time::steady_clock::TimePoint m_cubicLastDecrease;
+
 
   std::unordered_map<uint64_t, SegmentInfo> m_segmentInfo; ///< keeps all the internal information
                                                            ///< on sent but not acked segments

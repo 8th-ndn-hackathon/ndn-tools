@@ -36,7 +36,7 @@ namespace chunks {
 struct Options
 {
   time::milliseconds interestLifetime = ndn::DEFAULT_INTEREST_LIFETIME;
-  int maxRetriesOnTimeoutOrNack = 3;
+  int maxRetriesOnTimeoutOrNack = 15;
   bool mustBeFresh = false;
   bool isQuiet = false;
   bool isVerbose = false;
