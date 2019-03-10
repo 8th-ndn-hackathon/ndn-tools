@@ -201,7 +201,9 @@ PUBLIC_WITH_TESTS_ELSE_PRIVATE:
 
   int64_t m_nInFlight; ///< # of segments in flight
   int64_t m_nLossEvents; ///< # of loss events occurred
+  int64_t m_nTimeouts; ///< # of segments retransmitted
   int64_t m_nRetransmitted; ///< # of segments retransmitted
+  int64_t m_nRetxSkipped; ///< # of segments retransmitted
   int64_t m_nCongMarks; ///< # of data packets with congestion mark
   int64_t m_nSent; ///< # of interest packets sent out (including retransmissions)
 

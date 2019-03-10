@@ -48,7 +48,9 @@ PipelineInterestsAimd::PipelineInterestsAimd(Face& face, RttEstimator& rttEstima
   , m_recPoint(0)
   , m_nInFlight(0)
   , m_nLossEvents(0)
+  , m_nTimeouts(0)
   , m_nRetransmitted(0)
+  , m_nRetxSkipped(0)
   , m_nCongMarks(0)
   , m_nSent(0)
   , m_cwnd(m_options.initCwnd)
@@ -103,6 +105,7 @@ PipelineInterestsAimd::checkRto()
     if (segInfo.state != SegmentState::InRetxQueue) { // skip segments already in the retx queue
       Milliseconds timeElapsed = time::steady_clock::now() - segInfo.timeSent;
       if (timeElapsed.count() > segInfo.rto.count()) { // timer expired?
+        m_nTimeouts++;
         hasTimeout = true;
         enqueueForRetransmission(entry.first);
       }
@@ -191,6 +194,7 @@ PipelineInterestsAimd::schedulePackets()
       uint64_t retxSegNo = m_retxQueue.front();
       m_retxQueue.pop();
       if (m_segmentInfo.count(retxSegNo) == 0) {
+        m_nRetxSkipped++;
         continue;
       }
       // the segment is still in the map, that means it needs to be retransmitted
@@ -279,8 +283,12 @@ PipelineInterestsAimd::handleData(const Interest& interest, const Data& data)
   if ((segInfo.state == SegmentState::FirstTimeSent ||
        segInfo.state == SegmentState::InRetxQueue) &&
       m_retxCount.count(recvSegNo) == 0) {
+
+    // ExpectedSamples = ceiling(FlightSize / (SMSS * 2))
+
     auto nExpectedSamples = std::max<int64_t>((m_nInFlight + 1) >> 1, 1);
     BOOST_ASSERT(nExpectedSamples > 0);
+
     m_rttEstimator.addMeasurement(recvSegNo, rtt, static_cast<size_t>(nExpectedSamples));
   }
 
@@ -411,6 +419,8 @@ PipelineInterestsAimd::decreaseWindow()
   m_ssthresh = std::max(MIN_SSTHRESH, m_cwnd * m_options.mdCoef); // multiplicative decrease
   m_cwnd = m_options.resetCwndToInit ? m_options.initCwnd : m_ssthresh;
 
+  std::cerr << "Window decrease to " << m_cwnd << "\n";
+
   afterCwndChange(time::steady_clock::now() - getStartTime(), m_cwnd);
 }
 
@@ -433,8 +443,8 @@ void
 PipelineInterestsAimd::printSummary() const
 {
   PipelineInterests::printSummary();
-  std::cerr << "Total # of lost/retransmitted segments: " << m_nRetransmitted
-            << " (caused " << m_nLossEvents << " window decreases)\n"
+  std::cerr << "RTO Timeouts: " << m_nTimeouts << " (caused " << m_nLossEvents << " window decreases)" << "\n"
+            << "Retx segments: " << m_nRetransmitted << ", skipped: " << m_nRetxSkipped << "\n"
             << "Packet loss rate: "
             << (m_nSent == 0 ? 0 : (static_cast<double>(m_nRetransmitted) / static_cast<double>(m_nSent) * 100))  << "%\n"
             << "Total # of received congestion marks: " << m_nCongMarks << "\n"
