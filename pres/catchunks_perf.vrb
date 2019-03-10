@@ -1,0 +1,19 @@
+\frametitle{Small Improvements \& Future Work}
+
+\begin{enumerate}
+\item Increase retx limit from 3 to \textbf{15!}
+
+\pause
+\item Look into \textbf{small buffer size} issue!
+\begin{itemize}
+\item Timeouts: $>$ 1000 vs 80 in TCP
+\item Increasing k \& CUBIC doesn't help
+\end{itemize}
+
+\pause
+\item RTO Backoff mechanism doesn't work.
+
+\pause
+\item Tune congestion marks (UDP + Unix sockets)
+\end{enumerate}
+
